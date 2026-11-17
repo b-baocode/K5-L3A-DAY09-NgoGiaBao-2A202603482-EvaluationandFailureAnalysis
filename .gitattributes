@@ -1,0 +1,5 @@
+# The gate compares eval_set_sha (sha256 of the eval-set bytes) between a PR report and the
+# baseline. Windows checkouts with core.autocrlf=true would rewrite LF -> CRLF and change that
+# sha, so the gate would refuse every comparison. Keep eval data byte-identical on every OS.
+src/data/eval/*.jsonl text eol=lf
+src/data/eval/*.json  text eol=lf
