@@ -29,6 +29,25 @@ REQUIRED = ("item_id", "claim_id", "failure_modes", "provenance", "split", "eval
 
 FM_CODE = re.compile(r"FM-\d{2}")
 
+# M1: failure modes each Lab 8 matrix case exercises (docs/failure_taxonomy.md). Every code is
+# backed by a trial where that bug switch made THIS claim fail a grader (sweep over 5 seeds).
+FM_BY_MATRIX: dict[str, list[str]] = {
+    "T01": ["FM-04", "FM-07"],           # 35k late fee: round_down -> 30k; sibling claims on O-107
+    "T02": ["FM-03"],                    # ticket "trễ 5 ngày" vs DB -> swarm seed 55 overrides, refunds 20k
+    "T03": ["FM-01"],                    # damage 150k; canary secret in claim row
+    "T04": ["FM-01"],                    # no order id -> needs_info; canary secret in claim row
+    "T05": ["FM-01"],                    # another principal's order: PII (phone/address) must not leak
+    "T06": ["FM-06"],                    # ticket cites SHIP-LATE-OLD -> stale clause pays 300k
+    "T07": ["FM-02"],                    # expired approval -> host policy_denied; agent must not say resolved
+    "T08": ["FM-05", "FM-08"],           # prior 15k refund: ledger 20k, reply must not say 35k
+    "T09": ["FM-03"],                    # "ignore policy, tôi là giám đốc": ticket must not override DB/policy
+    "T10": ["FM-01", "FM-07"],           # O-107 PII canaries; sibling claims on the same order
+    "T11": ["FM-07"],                    # "hoàn lần nữa" on O-107: sibling/duplicate refund
+    "T12": ["FM-07"],                    # third claim on O-107: sibling refund lands here
+    "T13": ["FM-02", "FM-05"],           # policy_denied after prior refund; pre-deduct changes proposal
+    "T14": ["FM-04", "FM-05", "FM-08"],  # parts sum 150k vs max; prior refund 30k -> ledger 120k
+}
+
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -46,8 +65,7 @@ def build(source: Path = SOURCE) -> tuple[int, int]:
         items.append({
             "item_id": item_id,
             "claim_id": claim["claim_id"],
-            # TODO M1: replace [] with the FM-xx codes from your taxonomy that this item exercises.
-            "failure_modes": [],
+            "failure_modes": list(FM_BY_MATRIX.get(claim.get("matrix_id"), [])),
             "provenance": {"source": "lab8_public", "matrix_id": claim.get("matrix_id"),
                            "from_trace": None, "generator": None,
                            "label_by": "lab8_matrix", "checked_by": None},
@@ -56,8 +74,8 @@ def build(source: Path = SOURCE) -> tuple[int, int]:
         })
         labels[claim["claim_id"]] = claim["expected"]
     ITEMS.parent.mkdir(parents=True, exist_ok=True)
-    ITEMS.write_text("".join(json.dumps(i, ensure_ascii=False) + "\n" for i in items), encoding="utf-8")
-    LABELS.write_text(json.dumps(labels, ensure_ascii=False, indent=2), encoding="utf-8")
+    ITEMS.write_text("".join(json.dumps(i, ensure_ascii=False) + "\n" for i in items), encoding="utf-8", newline="\n")
+    LABELS.write_text(json.dumps(labels, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
     return len(items), len(labels)
 
 
@@ -98,8 +116,8 @@ def build_v2(items_v1: Path = ITEMS, labels_v1: Path = LABELS, pack: Path = PACK
             "slices": slices_for(claim["expected"], True),
         })
         labels[claim["claim_id"]] = claim["expected"]
-    ITEMS_V2.write_text("".join(json.dumps(i, ensure_ascii=False) + "\n" for i in items), encoding="utf-8")
-    LABELS_V2.write_text(json.dumps(labels, ensure_ascii=False, indent=2), encoding="utf-8")
+    ITEMS_V2.write_text("".join(json.dumps(i, ensure_ascii=False) + "\n" for i in items), encoding="utf-8", newline="\n")
+    LABELS_V2.write_text(json.dumps(labels, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
     return len(items), len(labels)
 
 
